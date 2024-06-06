@@ -348,6 +348,68 @@ void moveServoTo(Servo &servo, int targetAngle) {
   }
 }
 
+void performHappyGesture() {
+    Serial.println("HAPPPYYYYY");
+    neckServo.write(160);
+    delay(300);
+    neckServo.write(120);
+    delay(300);
+    neckServo.write(160);
+    delay(300);
+    neckServo.write(120);
+    delay(300);
+    faceServo.write(170);
+    delay(300);
+    faceServo.write(130);
+    delay(300);
+    faceServo.write(150);
+    delay(1000);
+}
+
+void performMadGesture(coords* randomNode) {
+    Serial.println("MAAADDD GHRRRR!!! WHERE'S MY OBJECT?!!!");
+    neckServo.write(150);
+    myservo.write(30);
+    delay(700);
+    myservo.write(150);
+    delay(700);
+    myservo.write(randomNode->maxBaseAngle - randomNode->minBaseAngle);
+    delay(1000);
+    moveServoTo(neckServo, 170);
+    moveServoTo(myservo, 180);
+    moveServoTo(neckServo, 140);
+    ThreeDMap.remove(randomNode->maxBaseAngle - randomNode->minBaseAngle);
+}
+
+void scanAndReact() {
+    int sum = 0;
+    int count = 0;
+    int avgDistance = 0;
+    coords* randomNode = ThreeDMap.getRandomNode();
+
+    if(randomNode != NULL) {
+        myservo.write(randomNode->minBaseAngle);
+        for(int i = randomNode->minBaseAngle; i <= randomNode->maxBaseAngle; i++) {
+            myservo.write(i);
+            sum += calculateDistance();
+            count++;
+            delay(15);
+        }
+        delay(500);
+        moveServoTo(myservo, randomNode->maxBaseAngle - randomNode->minBaseAngle);
+        delay(1000);
+
+        avgDistance = sum / count;
+        Serial.println(avgDistance);
+        if(avgDistance < 25) {
+            performHappyGesture();
+        } else {
+            performMadGesture(randomNode);
+        }
+    }
+}
+
+
 
 // -=+= MAIN PROGRAM =+=-
 void setup() {
@@ -361,524 +423,110 @@ void setup() {
 }
 
 void loop() {
-  moveServoTo(neckServo, 150);
-  // neckServo.write(150);
-  faceServo.write(150);
-  delay(500);
-  if (millis() - lastMovementTime >= 1000) {  // Check for movement every 1 second
+    moveServoTo(neckServo, 150);
+    faceServo.write(150);
+    delay(500);
 
-    switch (random(14)) {
-      case 1:  // Small rotation
-      direction = 1;
-        for (int i = 0; i >= 30; i++) {
-          myservo.write(myservo.read() + i);
-          if (detectObject()) {
-            handleObjectDetection();
-          }
+    if (millis() - lastMovementTime >= 1000) {
+        switch (random(14)) {
+            case 1: {
+                direction = 1;
+                for (int i = 0; i <= 30; i++) {
+                    myservo.write(myservo.read() + i);
+                    if (detectObject()) {
+                        handleObjectDetection();
+                    }
+                }
+                lastMovementTime = millis();
+                break;
+            }
+            case 2:
+            case 4:
+            case 7:
+                moveServosTo(neckServo, random(120, 160), myservo, random(0, 180));
+                break;
+            case 3: {
+                direction = -1;
+                for (int i = myservo.read(); i >= 0; i--) {
+                    myservo.write(i);
+                    delay(15);
+                    if (detectObject()) {
+                        handleObjectDetection();
+                    }
+                }
+                delay(servoMoveTime);
+                direction = 1;
+                for (int angle = 0; angle <= 90; angle++) {
+                    myservo.write(angle);
+                    delay(15);
+                    if (detectObject()) {
+                        handleObjectDetection();
+                    }
+                }
+                moveServoTo(neckServo, random(120, 160));
+                delay(500);
+                for (int angle = 90; angle <= 180; angle++) {
+                    myservo.write(angle);
+                    delay(15);
+                    if (detectObject()) {
+                        handleObjectDetection();
+                    }
+                }
+                moveServoTo(neckServo, random(120, 160));
+                delay(servoMoveTime);
+                break;
+            }
+            case 5:
+            case 8:
+            case 10:
+            case 11:
+            case 12:
+                scanAndReact();
+                break;
+            case 6: {
+                direction = -1;
+                for (int i = myservo.read(); i >= 0; i--) {
+                    myservo.write(i);
+                    delay(15);
+                    if (detectObject()) {
+                        handleObjectDetection();
+                    }
+                }
+                moveServoTo(neckServo, random(120, 160));
+                direction = 1;
+                for (int angle = 0; angle <= 90; angle++) {
+                    myservo.write(angle);
+                    delay(15);
+                    if (detectObject()) {
+                        handleObjectDetection();
+                        break;
+                    }
+                }
+                delay(500);
+                if (detectObject()) {
+                    handleObjectDetection();
+                }
+                break;
+            }
+            case 9: {
+                direction = -1;
+                for (int angle = myservo.read(); angle >= 90; angle--) {
+                    myservo.write(angle);
+                    if (detectObject()) {
+                        handleObjectDetection();
+                    }
+                    delay(15);
+                }
+                break;
+            }
+            case 13:
+                moveServosTo(neckServo, 150, myservo, 90);
+                faceServo.write(150);
+                break;
+            default:
+                break;
         }
-        lastMovementTime = millis();
-        
-        break;
-
-      case 2:
-        moveServosTo(neckServo, random(120, 160), myservo, random(0, 180));
-        
-        break;
-
-      case 3:  // Full rotation
-        // Option 1: Simple full rotation with checks at 0 and 180 degrees
-        direction = -1;
-        for (int i = myservo.read(); i >= 0; i--) {  // Rotate to 0 degrees
-          myservo.write(i);
-          delay(15);
-          if (detectObject()) {
-            handleObjectDetection();
-          }
-        }
-
-        delay(servoMoveTime);
-
-        direction = 1;
-        for (int angle = 0; angle <= 90; angle++) {  // Rotate to 90 degrees
-          myservo.write(angle);
-          delay(15);
-          if (detectObject()) {
-            handleObjectDetection();
-          }
-        }
-
-        moveServoTo(neckServo, random(120, 160));
-
-        delay(500);
-
-        direction = 1;
-        for (int angle = 90; angle <= 180; angle++) {  // Rotate to 180 degrees
-          myservo.write(angle);
-          delay(15);
-          if (detectObject()) {
-            handleObjectDetection();
-          }
-        }
-
-        moveServoTo(neckServo, random(120, 160));
-
-        delay(servoMoveTime);
-
-        
-
-        break;
-
-      case 4:
-        moveServosTo(neckServo, random(120, 160), myservo, random(0, 180));  // Rotate to either limit
-        break;
-
-      case 5:
-        int sum = 0;
-        int count = 0;
-        int avgDistance = 0;
-
-        coords* randomNode = ThreeDMap.getRandomNode();
-
-        if(randomNode != NULL) {
-          myservo.write(randomNode->minBaseAngle);
-          
-          for(int i = randomNode->minBaseAngle ; i <= randomNode->maxBaseAngle ; i++) {
-            myservo.write(i);
-            sum += calculateDistance();
-            count++;
-            delay(15);
-          }
-          delay(500);
-          moveServoTo(myservo, randomNode->maxBaseAngle - randomNode->minBaseAngle);
-          delay(1000);
-
-          avgDistance = sum/count;
-          sum = 0;
-          count = 0;
-
-          Serial.println(avgDistance);
-          if(avgDistance < 25) {
-            // Happy Gesture c:
-            Serial.println("HAPPPYYYYY");
-            
-            neckServo.write(160);
-            delay(300);
-            neckServo.write(120);
-            delay(300);
-            neckServo.write(160);
-            delay(300);
-            neckServo.write(120);
-            delay(300);
-            faceServo.write(170);
-            delay(300);
-            faceServo.write(130);
-            delay(300);
-            faceServo.write(150);
-            delay(1000);
-            break;
-            
-          }
-          else {
-            // Mad ;-;
-            Serial.println("MAAADDD GHRRRR!!! WHERE'S MY OBJECT?!!!");
-            
-            neckServo.write(150);
-            myservo.write(30);
-            delay(700);
-            myservo.write(150);
-            delay(700);
-            myservo.write(randomNode->maxBaseAngle - randomNode->minBaseAngle);
-            delay(1000);
-            moveServoTo(neckServo, 170);
-            moveServoTo(myservo, 180);
-            moveServoTo(neckServo, 140);
-
-            ThreeDMap.remove(randomNode->maxBaseAngle - randomNode->minBaseAngle);
-            break;
-          }
-        }
-        break;
-
-      case 6:                                        // Sweep
-        direction = -1;
-        for (int i = myservo.read(); i >= 0; i--) {  // Rotate to 0 degrees
-          myservo.write(i);
-          delay(15);
-          if (detectObject()) {
-            handleObjectDetection();
-          }
-        }
-
-        moveServoTo(neckServo, random(120, 160));
-
-        direction = 1;
-        for (int angle = 0; angle <= 90; angle++) {
-          myservo.write(angle);
-          if (detectObject()) {
-            handleObjectDetection();
-            break;  // Stop on object detection
-          }
-          delay(15);
-        }
-        delay(500);
-        if (detectObject()) {
-          handleObjectDetection();
-        }
-        
-        break;
-
-      case 7:
-        moveServosTo(neckServo, random(120, 160), myservo, random(0, 180));  // Sweep to either limit
-        break;
-
-      case 8:
-        sum = 0;
-        count = 0;
-        avgDistance = 0;
-
-        randomNode = ThreeDMap.getRandomNode();
-
-        if(randomNode != NULL) {
-          myservo.write(randomNode->minBaseAngle);
-          
-          for(int i = randomNode->minBaseAngle ; i <= randomNode->maxBaseAngle ; i++) {
-            myservo.write(i);
-            sum += calculateDistance();
-            count++;
-            delay(15);
-          }
-          delay(500);
-          moveServoTo(myservo, randomNode->maxBaseAngle - randomNode->minBaseAngle);
-          delay(1000);
-
-          avgDistance = sum/count;
-          sum = 0;
-          count = 0;
-
-          Serial.println(avgDistance);
-          if(avgDistance < 25) {
-            // Happy Gesture c:
-            Serial.println("HAPPPYYYYY");
-            
-            neckServo.write(160);
-            delay(300);
-            neckServo.write(120);
-            delay(300);
-            neckServo.write(160);
-            delay(300);
-            neckServo.write(120);
-            delay(300);
-            faceServo.write(170);
-            delay(300);
-            faceServo.write(130);
-            delay(300);
-            faceServo.write(150);
-            delay(1000);
-            break;
-            
-          }
-          else {
-            // Mad ;-;
-            Serial.println("MAAADDD GHRRRR!!! WHERE'S MY OBJECT?!!!");
-            
-            neckServo.write(150);
-            myservo.write(30);
-            delay(700);
-            myservo.write(150);
-            delay(700);
-            myservo.write(randomNode->maxBaseAngle - randomNode->minBaseAngle);
-            delay(1000);
-            moveServoTo(neckServo, 170);
-            moveServoTo(myservo, 180);
-            moveServoTo(neckServo, 140);
-
-            ThreeDMap.remove(randomNode->maxBaseAngle - randomNode->minBaseAngle);
-            break;
-          }
-        }
-        break;
-
-      case 9:  // Sweep but opposite
-      direction = -1;
-        for (int angle = myservo.read(); angle >= 90; angle--) {
-          myservo.write(angle);
-          if (detectObject()) {
-            handleObjectDetection();
-          }
-          delay(15);
-        }
-        break;
-        
-      case 10:
-        sum = 0;
-        count = 0;
-        avgDistance = 0;
-
-        randomNode = ThreeDMap.getRandomNode();
-
-        if(randomNode != NULL) {
-          myservo.write(randomNode->minBaseAngle);
-          
-          for(int i = randomNode->minBaseAngle ; i <= randomNode->maxBaseAngle ; i++) {
-            myservo.write(i);
-            sum += calculateDistance();
-            count++;
-            delay(15);
-            
-          }
-          delay(500);
-          moveServoTo(myservo, randomNode->maxBaseAngle - randomNode->minBaseAngle);
-          delay(1000);
-
-          avgDistance = sum/count;
-          sum = 0;
-          count = 0;
-
-          Serial.println(avgDistance);
-          if(avgDistance < 25) {
-            // Happy Gesture c:
-            Serial.println("HAPPPYYYYY");
-            
-            neckServo.write(160);
-            delay(300);
-            neckServo.write(120);
-            delay(300);
-            neckServo.write(160);
-            delay(300);
-            neckServo.write(120);
-            delay(300);
-            faceServo.write(170);
-            delay(300);
-            faceServo.write(130);
-            delay(300);
-            faceServo.write(150);
-            delay(1000);
-            break;
-          }
-          else {
-            // Mad ;-;
-            Serial.println("MAAADDD GHRRRR!!! WHERE'S MY OBJECT?!!!");
-            neckServo.write(150);
-            myservo.write(30);
-            delay(700);
-            myservo.write(150);
-            delay(700);
-            myservo.write(randomNode->maxBaseAngle - randomNode->minBaseAngle);
-            delay(1000);
-            moveServoTo(neckServo, 170);
-            moveServoTo(myservo, 180);
-            moveServoTo(neckServo, 140);
-
-            ThreeDMap.remove(randomNode->maxBaseAngle - randomNode->minBaseAngle);
-            break;
-          }
-        }
-        break;
-
-      case 11:
-        sum = 0;
-        count = 0;
-        avgDistance = 0;
-
-        randomNode = ThreeDMap.getRandomNode();
-
-        if(randomNode != NULL) {
-          myservo.write(randomNode->minBaseAngle);
-          
-          for(int i = randomNode->minBaseAngle ; i <= randomNode->maxBaseAngle ; i++) {
-            myservo.write(i);
-            sum += calculateDistance();
-            count++;
-            delay(15);
-          }
-          delay(500);
-          moveServoTo(myservo, randomNode->maxBaseAngle - randomNode->minBaseAngle);
-          delay(1000);
-
-          avgDistance = sum/count;
-          sum = 0;
-          count = 0;
-
-          Serial.println(avgDistance);
-          if(avgDistance < 25) {
-            // Happy Gesture c:
-            Serial.println("HAPPPYYYYY");
-            
-            neckServo.write(160);
-            delay(300);
-            neckServo.write(120);
-            delay(300);
-            neckServo.write(160);
-            delay(300);
-            neckServo.write(120);
-            delay(300);
-            faceServo.write(170);
-            delay(300);
-            faceServo.write(130);
-            delay(300);
-            faceServo.write(150);
-            delay(1000);
-            break;
-            
-          }
-          else {
-            // Mad ;-;
-            Serial.println("MAAADDD GHRRRR!!! WHERE'S MY OBJECT?!!!");
-            
-            neckServo.write(150);
-            myservo.write(30);
-            delay(700);
-            myservo.write(150);
-            delay(700);
-            myservo.write(randomNode->maxBaseAngle - randomNode->minBaseAngle);
-            delay(1000);
-            moveServoTo(neckServo, 170);
-            moveServoTo(myservo, 180);
-            moveServoTo(neckServo, 140);
-
-            ThreeDMap.remove(randomNode->maxBaseAngle - randomNode->minBaseAngle);
-            break;
-          }
-        }
-        break;
-
-        case 12:
-        sum = 0;
-        count = 0;
-        avgDistance = 0;
-
-        randomNode = ThreeDMap.getRandomNode();
-
-        if(randomNode != NULL) {
-          myservo.write(randomNode->minBaseAngle);
-          
-          for(int i = randomNode->minBaseAngle ; i <= randomNode->maxBaseAngle ; i++) {
-            myservo.write(i);
-            sum += calculateDistance();
-            count++;
-            delay(15);
-            
-          }
-          delay(500);
-          moveServoTo(myservo, randomNode->maxBaseAngle - randomNode->minBaseAngle);
-          delay(1000);
-
-          avgDistance = sum/count;
-          sum = 0;
-          count = 0;
-
-          Serial.println(avgDistance);
-          if(avgDistance < 25) {
-            // Happy Gesture c:
-            Serial.println("HAPPPYYYYY");
-            
-            neckServo.write(160);
-            delay(300);
-            neckServo.write(120);
-            delay(300);
-            neckServo.write(160);
-            delay(300);
-            neckServo.write(120);
-            delay(300);
-            faceServo.write(170);
-            delay(300);
-            faceServo.write(130);
-            delay(300);
-            faceServo.write(150);
-            delay(1000);
-            break;
-          }
-          else {
-            // Mad ;-;
-            Serial.println("MAAADDD GHRRRR!!! WHERE'S MY OBJECT?!!!");
-            neckServo.write(150);
-            myservo.write(30);
-            delay(700);
-            myservo.write(150);
-            delay(700);
-            myservo.write(randomNode->maxBaseAngle - randomNode->minBaseAngle);
-            delay(1000);
-            moveServoTo(neckServo, 170);
-            moveServoTo(myservo, 180);
-            moveServoTo(neckServo, 140);
-
-            ThreeDMap.remove(randomNode->maxBaseAngle - randomNode->minBaseAngle);
-            break;
-          }
-        }
-        break;
-
-      case 13:
-        sum = 0;
-        count = 0;
-        avgDistance = 0;
-
-        randomNode = ThreeDMap.getRandomNode();
-
-        if(randomNode != NULL) {
-          myservo.write(randomNode->minBaseAngle);
-          
-          for(int i = randomNode->minBaseAngle ; i <= randomNode->maxBaseAngle ; i++) {
-            myservo.write(i);
-            sum += calculateDistance();
-            count++;
-            delay(15);
-          }
-          delay(500);
-          moveServoTo(myservo, randomNode->maxBaseAngle - randomNode->minBaseAngle);
-          delay(1000);
-
-          avgDistance = sum/count;
-          sum = 0;
-          count = 0;
-
-          Serial.println(avgDistance);
-          if(avgDistance < 25) {
-            // Happy Gesture c:
-            Serial.println("HAPPPYYYYY");
-            
-            neckServo.write(160);
-            delay(300);
-            neckServo.write(120);
-            delay(300);
-            neckServo.write(160);
-            delay(300);
-            neckServo.write(120);
-            delay(300);
-            faceServo.write(170);
-            delay(300);
-            faceServo.write(130);
-            delay(300);
-            faceServo.write(150);
-            delay(1000);
-            break;
-            
-          }
-          else {
-            // Mad ;-;
-            Serial.println("MAAADDD GHRRRR!!! WHERE'S MY OBJECT?!!!");
-            
-            neckServo.write(150);
-            myservo.write(30);
-            delay(700);
-            myservo.write(150);
-            delay(700);
-            myservo.write(randomNode->maxBaseAngle - randomNode->minBaseAngle);
-            delay(1000);
-            moveServoTo(neckServo, 170);
-            moveServoTo(myservo, 180);
-            moveServoTo(neckServo, 140);
-
-            ThreeDMap.remove(randomNode->maxBaseAngle - randomNode->minBaseAngle);
-            break;
-          }
-        }
-        break;
-
-      default:  // Pause
-        break;
     }
-  }
 }
 
 void handleObjectDetection() {
